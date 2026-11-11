@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Referencias | Dinámica de Auto-Ensamblaje de una Cápside T=1</title>
+  <style>
+    :root {
+      --azul: #003366;
+      --gris-claro: #f5f8fc;
+    }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--gris-claro);
+      color: #222;
+      margin: 0;
+      padding: 0;
+      line-height: 1.55;
+    }
+    header {
+      background-color: var(--azul);
+      color: white;
+      padding: 1.8rem 1.2rem;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 0.4rem 0; font-size: 1.5rem; }
+    header p { margin: 0.2rem 0; opacity: 0.9; font-size: 0.95rem; }
+    main {
+      max-width: 900px;
+      margin: 1.5rem auto;
+      padding: 0 1rem 3rem 1rem;
+    }
+    #buscador {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border: 2px solid var(--azul);
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-bottom: 1.2rem;
+    }
+    .ref-card {
+      background: white;
+      border-left: 4px solid var(--azul);
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.85rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .ref-title { font-weight: 700; color: var(--azul); font-size: 1.05rem; }
+    .ref-authors { color: #333; margin: 0.25rem 0; }
+    .ref-meta { font-size: 0.9rem; color: #555; font-style: italic; }
+    .ref-links { margin-top: 0.4rem; font-size: 0.85rem; }
+    .ref-links a { color: var(--azul); text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Dinámica de Auto-Ensamblaje de una Cápside T=1</h1>
+    <p><strong>Fís. José Elías Camarillo Sánchez</strong></p>
+    <p>Directores: Dra. Jacqueline Quintana Hinojosa (UNAM) y Dr. Gustavo A. Chapela Castañares (UAM-I)</p>
+  </header>
+
+  <main>
+    <input type="text" id="buscador" placeholder="Buscar por autor, título o año...">
+    <div id="contenedor-referencias">Cargando referencias desde referencias.bib...</div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/citation-js@0.7.14/build/citation.min.js"></script>
+  <script>
+    const Cite = require('citation-js');
+    let entradas = [];
+
+    function limpiarLatex(str) {
+      if (!str) return '';
+      return str.replace(/[{}]/g, '');
+    }
+
+    function renderizar(lista) {
+      const cont = document.getElementById('contenedor-referencias');
+      if (!lista.length) {
+        cont.innerHTML = '<p>No se encontraron referencias que coincidan con la búsqueda.</p>';
+        return;
+      }
+      cont.innerHTML = lista.map((item, idx) => {
+        const autores = (item.author || [])
+          .map(a => [a.given, a.family].filter(Boolean).join(' '))
+          .join(', ');
+        const anio = item.issued?.['date-parts']?.[0]?.[0] || '';
+        const revista = item['container-title'] || item.publisher || '';
+        const doi = item.DOI ? `<div class="ref-links"><a href="https://doi.org/${item.DOI}" target="_blank">DOI: ${item.DOI}</a></div>` : '';
+        return `
+          <div class="ref-card">
+            <div class="ref-title">[${idx + 1}] ${limpiarLatex(item.title || 'Sin título')}</div>
+            <div class="ref-authors">${limpiarLatex(autores)}</div>
+            <div class="ref-meta">${limpiarLatex(revista)} ${anio ? '(' + anio + ')' : ''}</div>
+            ${doi}
+          </div>`;
+      }).join('');
+    }
+
+    fetch('referencias.bib')
+      .then(r => r.text())
+      .then(textoBib => {
+        const cite = new Cite(textoBib);
+        entradas = cite.data;
+        renderizar(entradas);
+      })
+      .catch(() => {
+        document.getElementById('contenedor-referencias').innerHTML =
+          '<p>Sube el archivo <strong>referencias.bib</strong> junto a este <strong>index.html</strong> para visualizar las referencias.</p>';
+      });
+
+    document.getElementById('buscador').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      const filtradas = entradas.filter(it =>
+        JSON.stringify(it).toLowerCase().includes(q)
+      );
+      renderizar(filtradas);
+    });
+  </script>
+</body>
+</html>
